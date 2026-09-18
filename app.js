@@ -1,11 +1,18 @@
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const runningMotion = new Set();
 const elementMotion = new WeakMap();
-const motionEase = 'cubic-bezier(.22,.8,.2,1)';
+const motionEase = 'cubic-bezier(.22,1,.36,1)';
 function animate(element, frames, options = {}) {
-  elementMotion.get(element)?.cancel();
+  const previous = elementMotion.get(element);
+  if (previous?.playState === 'running') {
+    const current = getComputedStyle(element);
+    frames = frames.map(frame => ({...frame}));
+    for (const property of Object.keys(frames[0])) frames[0][property] = current[property];
+  }
+  previous?.cancel();
   if (reducedMotion.matches || !element.animate) return;
-  const animation = element.animate(frames, {duration: 280, easing: motionEase, ...options});
+  // Hold the first frame during stagger delays, then return to the base style.
+  const animation = element.animate(frames, {duration: 320, easing: motionEase, fill: 'backwards', ...options});
   elementMotion.set(element, animation);
   runningMotion.add(animation);
   animation.finished.then(() => runningMotion.delete(animation), () => runningMotion.delete(animation));
@@ -22,13 +29,25 @@ if (tidy && workflow && range && caption) {
   const cards = [...workflow.querySelectorAll('.task')];
   const rotations = [-8, 7, -6, 5];
   let frame;
+  let flowValue = 0;
+  let destination = 0;
+  let targets = [];
+  const workbench = workflow.closest('.workbench');
+  function measureFlow() {
+    const width = workflow.clientWidth, height = workflow.clientHeight;
+    targets = cards.map((card, index) => ({
+      x: (width - card.offsetWidth) / 2 - card.offsetLeft,
+      y: 4 + index * ((height - card.offsetHeight - 8) / 3) - card.offsetTop,
+    }));
+    showFlow(flowValue);
+  }
   function showFlow(value) {
+    flowValue = value;
     const progress = value / 100;
     range.value = value;
-    workflow.closest('.workbench').style.setProperty('--flow', progress);
+    workbench.style.setProperty('--flow', progress);
     cards.forEach((card, index) => {
-      const x = (workflow.clientWidth - card.offsetWidth) / 2 - card.offsetLeft;
-      const y = 4 + index * ((workflow.clientHeight - card.offsetHeight - 8) / 3) - card.offsetTop;
+      const {x, y} = targets[index];
       card.style.setProperty('--tx', `${x * progress}px`);
       card.style.setProperty('--ty', `${y * progress}px`);
       card.style.setProperty('--rotation', `${rotations[index] * (1 - progress)}deg`);
@@ -39,22 +58,32 @@ if (tidy && workflow && range && caption) {
     tidy.firstChild.textContent = ordered ? 'See the before ' : 'Untangle it ';
     caption.textContent = ordered ? 'A connected workflow. Important decisions stay with your team.' : 'An illustration of scattered work.';
   }
-  range.addEventListener('input', () => { cancelAnimationFrame(frame); showFlow(Number(range.value)); });
+  range.addEventListener('input', () => {
+    cancelAnimationFrame(frame);
+    const value = Number(range.value);
+    destination = value >= 95 ? 100 : 0;
+    showFlow(value);
+  });
   reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) cancelAnimationFrame(frame); });
   tidy.addEventListener('click', event => {
     cancelAnimationFrame(frame);
-    const start = Number(range.value), end = start >= 95 ? 0 : 100;
+    const start = flowValue;
+    const end = destination === 100 ? 0 : 100;
+    destination = end;
     if (reducedMotion.matches || !event.detail) { showFlow(end); return; }
     const began = performance.now();
     const animate = now => {
       const t = Math.min((now - began) / 700, 1);
-      showFlow(start + (end - start) * (1 - Math.pow(1 - t, 3)));
+      const eased = t * t * (3 - 2 * t);
+      showFlow(start + (end - start) * eased);
       if (t < 1) frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
   });
-  new ResizeObserver(() => showFlow(Number(range.value))).observe(workflow);
-  showFlow(0);
+  const flowSize = new ResizeObserver(measureFlow);
+  flowSize.observe(workflow);
+  cards.forEach(card => flowSize.observe(card));
+  measureFlow();
 }
 
 // Each example keeps its own selection and keyboard focus.
@@ -278,7 +307,7 @@ if ('IntersectionObserver' in window) {
           ? entry.target.querySelectorAll('.film-cover-copy, .slip-back, .slip-front')
           : entry.target.children;
       [...items].forEach((item, index) => {
-        animate(item, [{opacity: .15, translate: '0 26px'}, {opacity: 1, translate: '0 0'}], {duration: 650, delay: Math.min(index, 4) * 65});
+        animate(item, [{opacity: .45, translate: '0 18px'}, {opacity: 1, translate: '0 0'}], {duration: 620, delay: Math.min(index, 4) * 45});
       });
     }
   }, {threshold: .12});
