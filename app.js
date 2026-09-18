@@ -1,3 +1,19 @@
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const runningMotion = new Set();
+const elementMotion = new WeakMap();
+const motionEase = 'cubic-bezier(.22,.8,.2,1)';
+function animate(element, frames, options = {}) {
+  elementMotion.get(element)?.cancel();
+  if (reducedMotion.matches || !element.animate) return;
+  const animation = element.animate(frames, {duration: 280, easing: motionEase, ...options});
+  elementMotion.set(element, animation);
+  runningMotion.add(animation);
+  animation.finished.then(() => runningMotion.delete(animation), () => runningMotion.delete(animation));
+}
+reducedMotion.addEventListener('change', () => {
+  if (reducedMotion.matches) for (const animation of runningMotion) animation.cancel();
+});
+
 const tidy = document.querySelector('.tidy-button');
 const workflow = document.querySelector('#workflow');
 const range = document.querySelector('#workflow-range');
@@ -24,10 +40,11 @@ if (tidy && workflow && range && caption) {
     caption.textContent = ordered ? 'A connected workflow. Important decisions stay with your team.' : 'An illustration of scattered work.';
   }
   range.addEventListener('input', () => { cancelAnimationFrame(frame); showFlow(Number(range.value)); });
-  tidy.addEventListener('click', () => {
+  reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) cancelAnimationFrame(frame); });
+  tidy.addEventListener('click', event => {
     cancelAnimationFrame(frame);
     const start = Number(range.value), end = start >= 95 ? 0 : 100;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { showFlow(end); return; }
+    if (reducedMotion.matches || !event.detail) { showFlow(end); return; }
     const began = performance.now();
     const animate = now => {
       const t = Math.min((now - began) / 700, 1);
@@ -51,17 +68,49 @@ if (exampleTabs) {
 // Each example keeps its own selection and keyboard focus.
 for (const list of document.querySelectorAll('[role="tablist"]')) {
   const tabs = [...list.querySelectorAll('[role="tab"]')];
-  function select(tab, moveFocus = false) {
+  let indicator;
+  if (list.classList.contains('product-tabs')) {
+    indicator = document.createElement('span');
+    indicator.className = 'tab-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    list.append(indicator);
+    list.classList.add('has-indicator');
+  }
+  function positionIndicator(animateChange = false) {
+    if (!indicator) return;
+    const tab = tabs.find(item => item.getAttribute('aria-selected') === 'true');
+    const previous = getComputedStyle(indicator).transform;
+    const next = `translateX(${tab.offsetLeft}px) scaleX(${tab.offsetWidth})`;
+    indicator.style.transform = next;
+    if (animateChange) animate(indicator, [{transform: previous}, {transform: next}]);
+    else elementMotion.get(indicator)?.cancel();
+  }
+  if (indicator) new ResizeObserver(() => positionIndicator()).observe(list);
+  function select(tab, moveFocus = false, useMotion = false) {
+    const previousIndex = tabs.findIndex(item => item.getAttribute('aria-selected') === 'true');
+    const nextIndex = tabs.indexOf(tab);
     for (const item of tabs) {
       const selected = item === tab;
       item.setAttribute('aria-selected', String(selected));
       item.tabIndex = selected ? 0 : -1;
       document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
     }
+    positionIndicator(useMotion && previousIndex !== nextIndex);
+    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+    if (useMotion && previousIndex !== nextIndex) {
+      const direction = nextIndex > previousIndex ? 1 : -1;
+      animate(panel, [{opacity: 0, translate: `${direction * 18}px 0`}, {opacity: 1, translate: '0 0'}]);
+      panel.querySelectorAll('.ingredient-row').forEach((row, index) => {
+        animate(row, [{opacity: .2, translate: '0 12px'}, {opacity: 1, translate: '0 0'}], {delay: 45 * index, duration: 300});
+      });
+    } else {
+      elementMotion.get(panel)?.cancel();
+      panel.querySelectorAll('.ingredient-row').forEach(row => elementMotion.get(row)?.cancel());
+    }
     if (moveFocus) tab.focus();
   }
   for (const tab of tabs) {
-    tab.addEventListener('click', () => select(tab));
+    tab.addEventListener('click', event => select(tab, false, event.detail > 0));
     tab.addEventListener('keydown', event => {
       let index = tabs.indexOf(tab);
       if (event.key === 'ArrowRight' || (list.getAttribute('aria-orientation') === 'vertical' && event.key === 'ArrowDown')) index = (index + 1) % tabs.length;
@@ -76,15 +125,46 @@ for (const list of document.querySelectorAll('[role="tablist"]')) {
 }
 for (const button of document.querySelectorAll('[data-organise]')) {
   button.hidden = false;
-  button.addEventListener('click', () => {
-    const demo = button.closest('.task-demo');
+  const demo = button.closest('.task-demo');
+  const request = demo.querySelector('.raw-request');
+  const details = demo.querySelector('.organised-details');
+  const values = [...details.querySelectorAll('dd')];
+  // Map only exact text matches in these fixed examples; this is not live extraction.
+  const sources = values.map(value => {
+    const walker = document.createTreeWalker(request, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const index = node.textContent.toLowerCase().indexOf(value.textContent.toLowerCase());
+      if (index < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + value.textContent.length);
+      const span = document.createElement('span');
+      span.className = 'request-detail';
+      range.surroundContents(span);
+      return span;
+    }
+  });
+  button.addEventListener('click', event => {
     const ready = button.getAttribute('aria-pressed') !== 'true';
+    const origins = ready ? sources.map(source => source?.getBoundingClientRect()) : [];
+    for (const element of [request, ...values, ...details.querySelectorAll('dt')]) elementMotion.get(element)?.cancel();
     button.setAttribute('aria-pressed', String(ready));
     demo.classList.toggle('is-organised', ready);
-    demo.querySelector('.raw-request').hidden = ready;
-    demo.querySelector('.organised-details').hidden = !ready;
+    request.hidden = ready;
+    details.hidden = !ready;
     demo.querySelector('.demo-state').textContent = ready ? 'Ready for your review' : 'Details in a message';
     button.firstChild.textContent = ready ? 'Reset example ' : 'Organise the details ';
+    if (!event.detail || reducedMotion.matches) return;
+    if (ready) {
+      values.forEach((value, index) => {
+        const target = value.getBoundingClientRect();
+        const origin = origins[index];
+        const offset = origin ? `${origin.left - target.left}px ${origin.top - target.top}px` : '0 16px';
+        animate(value, [{translate: offset, opacity: .4}, {translate: '0 0', opacity: 1}], {duration: 460, delay: index * 35});
+        animate(value.previousElementSibling, [{opacity: 0, translate: '0 5px'}, {opacity: 1, translate: '0 0'}], {delay: 130 + index * 35});
+      });
+    } else animate(request, [{opacity: 0, translate: '0 10px'}, {opacity: 1, translate: '0 0'}]);
   });
 }
 const menu = document.querySelector('.menu-toggle');
@@ -194,17 +274,46 @@ if (video) {
     }, { threshold: 0.05 }).observe(video);
   }
 }
-if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+// Reveal once on entry. Content stays visible if animation is unavailable.
+if ('IntersectionObserver' in window) {
   const observer = new IntersectionObserver(entries => {
     for (const entry of entries) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+      if (!entry.isIntersecting) continue;
+      observer.unobserve(entry.target);
+      const items = entry.target.matches('.hero')
+        ? entry.target.querySelectorAll('h1, .hero-intro, .hero-actions, .task')
+        : entry.target.matches('.film-player')
+          ? entry.target.querySelectorAll('.film-cover-copy, .slip-back, .slip-front')
+          : entry.target.children;
+      [...items].forEach((item, index) => {
+        animate(item, [{opacity: .15, translate: '0 26px'}, {opacity: 1, translate: '0 0'}], {duration: 650, delay: Math.min(index, 4) * 65});
+      });
     }
-  }, { threshold: 0.08 });
-  for (const section of document.querySelectorAll('.manifesto, .workflow-explorer, .product-heading, .product-card, .people-grid')) {
-    section.classList.add('reveal', 'ready');
-    observer.observe(section);
-  }
+  }, {threshold: .12});
+  document.querySelectorAll('.hero, .manifesto, .workflow-explorer, .product-heading, .product-card, .film-player, .people-grid, .contact-grid').forEach(section => observer.observe(section));
+}
+
+const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+for (const [surfaceSelector, artSelector] of [['.hero', '.workflow-center img'], ['.film-cover', '.film-cover-art']]) {
+  const surface = document.querySelector(surfaceSelector);
+  const art = document.querySelector(artSelector);
+  if (!surface || !art) continue;
+  let frame;
+  const reset = () => {
+    cancelAnimationFrame(frame);
+    art.style.setProperty('--pointer-x', '0px');
+    art.style.setProperty('--pointer-y', '0px');
+  };
+  surface.addEventListener('pointermove', event => {
+    if (!finePointer.matches || reducedMotion.matches || event.pointerType !== 'mouse') return;
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      const rect = surface.getBoundingClientRect();
+      art.style.setProperty('--pointer-x', `${(event.clientX - rect.left - rect.width / 2) / rect.width * 18}px`);
+      art.style.setProperty('--pointer-y', `${(event.clientY - rect.top - rect.height / 2) / rect.height * 14}px`);
+    });
+  });
+  surface.addEventListener('pointerleave', reset);
+  finePointer.addEventListener('change', reset);
+  reducedMotion.addEventListener('change', reset);
 }
