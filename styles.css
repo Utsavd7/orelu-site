@@ -258,4 +258,42 @@ html{scroll-padding-top:115px}
  .film-heading>p{margin-bottom:0}
 }
 
+/* Keep supporting copy readable at every breakpoint. */
+body#top :is(.eyebrow,.hero-coordinate,.hero-bottom,.section-index>span,.explorer-heading>span,.example-note,.task-demo-top,.demo-state,.desk-overline,.review-stamp,.status,.preview-header,.compare-head,.record-label,.preview-note,.preview-disclaimer,.film-chapters button,.film-status,.transcript,.founder p,.footer p,.footer div,.industry-note>span,.industry-note p){font-size:14px;line-height:1.55}
+body#top :is(.header nav a,.contact-link,.menu-toggle,.button,.watch-link,.text-link,.example-tabs button,.organise-button,.product-tabs button,.film-cover-play){font-size:15px;line-height:1.5}
+body#top :is(.hero-intro,.manifesto-copy p,.example-problem,.review-note,.product-copy>p,.ingredient-row,.film-heading>p,.people-copy>p,.principles p,.transcript p){font-size:16px;line-height:1.7}
+body#top .manifesto-copy p:first-of-type{font-size:21px;line-height:1.5}
+body#top :is(.principles span,.founder h3){font-size:18px;line-height:1.4}
+body#top .organised-details dt{font-size:14px;line-height:1.5}
+body#top .example-tabs{gap:28px}
+body#top .example-tabs button{min-height:48px}
+body#top .example-note{max-width:65ch}
+body#top .review-note{max-width:48ch}
+body#top .task-demo-bottom{gap:32px}
+body#top .film-chapters{gap:12px 28px}
+body#top .transcript summary{min-height:44px}
+body#top .industry-note{flex-wrap:wrap;gap:20px}
+body#top .preview-panel{min-height:310px}
+body#top .footer div{flex-wrap:wrap}
+@media(max-width:600px){
+ body#top .header{gap:10px}
+ body#top .header .contact-link{padding:10px 12px;gap:8px;font-size:14px}
+ body#top .menu-toggle{font-size:14px}
+ body#top .brand img{width:100px}
+ body#top .hero-top .eyebrow{font-size:13px}
+ body#top .hero-bottom>a{font-size:0}
+ body#top .example-tabs{gap:12px}
+ body#top .example-tabs button{font-size:14px}
+ body#top .explorer-heading>span{margin-top:16px}
+ body#top .film-cover{grid-template-columns:1fr}
+ body#top .film-cover-art{display:none}
+ body#top .film-cover-copy{padding:16px;gap:8px;justify-content:space-between}
+ body#top .film-cover-copy>img{width:72px}
+ body#top .film-cover-title{font-size:26px;line-height:1.05;margin:0}
+ body#top .film-cover-play{font-size:14px;gap:10px}
+ body#top .film-cover-play .icon{width:28px;height:28px;padding:6px}
+ body#top .film-chapters{gap:4px 18px}
+ body#top .founders{gap:16px}
+}
+
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.product-preview,.founder:hover .avatar img{transform:none!important}}
