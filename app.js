@@ -311,7 +311,7 @@ if ('IntersectionObserver' in window) {
       });
     }
   }, {threshold: .12});
-  document.querySelectorAll('.hero, .manifesto, .workflow-explorer, .product-heading, .product-card, .film-player, .people-grid, .contact-grid').forEach(section => observer.observe(section));
+  document.querySelectorAll('.hero, .manifesto, .workflow-explorer, .product-card, .film-player, .people-grid, .contact-grid').forEach(section => observer.observe(section));
 }
 
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
