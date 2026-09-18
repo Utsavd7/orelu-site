@@ -74,6 +74,19 @@ for (const list of document.querySelectorAll('[role="tablist"]')) {
     });
   }
 }
+for (const button of document.querySelectorAll('[data-organise]')) {
+  button.hidden = false;
+  button.addEventListener('click', () => {
+    const demo = button.closest('.task-demo');
+    const ready = button.getAttribute('aria-pressed') !== 'true';
+    button.setAttribute('aria-pressed', String(ready));
+    demo.classList.toggle('is-organised', ready);
+    demo.querySelector('.raw-request').hidden = ready;
+    demo.querySelector('.organised-details').hidden = !ready;
+    demo.querySelector('.demo-state').textContent = ready ? 'Ready for your review' : 'Details in a message';
+    button.firstChild.textContent = ready ? 'Reset example ' : 'Organise the details ';
+  });
+}
 const menu = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('#main-nav');
 if (menu && navigation) {
@@ -103,6 +116,18 @@ if (menu && navigation) {
 const video = document.querySelector('#intro-video');
 if (video) {
   const filmStatus = document.querySelector('#film-status');
+  const cover = document.querySelector('.film-cover');
+  if (cover) {
+    cover.hidden = false;
+    video.addEventListener('play', () => { cover.hidden = true; });
+    cover.addEventListener('click', () => {
+      video.play().then(() => video.focus()).catch(() => {
+        cover.hidden = true;
+        video.focus();
+        filmStatus.textContent = 'Press Play to watch the film.';
+      });
+    });
+  }
   let bufferedVideo;
   let objectUrl;
   let chapterRequest = 0;
