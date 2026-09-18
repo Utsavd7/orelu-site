@@ -57,14 +57,6 @@ if (tidy && workflow && range && caption) {
   showFlow(0);
 }
 
-const exampleTabs = document.querySelector('.example-tabs');
-if (exampleTabs) {
-  const compact = matchMedia('(max-width: 800px)');
-  const setOrientation = () => exampleTabs.setAttribute('aria-orientation', compact.matches ? 'horizontal' : 'vertical');
-  compact.addEventListener('change', setOrientation);
-  setOrientation();
-}
-
 // Each example keeps its own selection and keyboard focus.
 for (const list of document.querySelectorAll('[role="tablist"]')) {
   const tabs = [...list.querySelectorAll('[role="tab"]')];
@@ -151,7 +143,7 @@ for (const button of document.querySelectorAll('[data-organise]')) {
     for (const element of [request, ...values, ...details.querySelectorAll('dt')]) elementMotion.get(element)?.cancel();
     button.setAttribute('aria-pressed', String(ready));
     demo.classList.toggle('is-organised', ready);
-    request.hidden = ready;
+    demo.querySelector('.record-placeholder').hidden = ready;
     details.hidden = !ready;
     demo.querySelector('.demo-state').textContent = ready ? 'Ready for your review' : 'Details in a message';
     button.firstChild.textContent = ready ? 'Reset example ' : 'Organise the details ';
@@ -164,7 +156,7 @@ for (const button of document.querySelectorAll('[data-organise]')) {
         animate(value, [{translate: offset, opacity: .4}, {translate: '0 0', opacity: 1}], {duration: 460, delay: index * 35});
         animate(value.previousElementSibling, [{opacity: 0, translate: '0 5px'}, {opacity: 1, translate: '0 0'}], {delay: 130 + index * 35});
       });
-    } else animate(request, [{opacity: 0, translate: '0 10px'}, {opacity: 1, translate: '0 0'}]);
+    } else animate(demo.querySelector('.record-placeholder'), [{opacity: 0, translate: '0 10px'}, {opacity: 1, translate: '0 0'}]);
   });
 }
 const menu = document.querySelector('.menu-toggle');
@@ -316,4 +308,34 @@ for (const [surfaceSelector, artSelector] of [['.hero', '.workflow-center img'],
   surface.addEventListener('pointerleave', reset);
   finePointer.addEventListener('change', reset);
   reducedMotion.addEventListener('change', reset);
+}
+
+const readingProgress = document.querySelector('.reading-progress');
+if (readingProgress) {
+  let scrollFrame;
+  const updateReading = () => {
+    scrollFrame = undefined;
+    const available = document.documentElement.scrollHeight - innerHeight;
+    readingProgress.style.transform = `scaleX(${available > 0 ? Math.min(1, Math.max(0, scrollY / available)) : 0})`;
+    document.querySelector('.header').classList.toggle('is-scrolled', scrollY > 32);
+  };
+  addEventListener('scroll', () => {
+    if (scrollFrame === undefined) scrollFrame = requestAnimationFrame(updateReading);
+  }, {passive: true});
+  addEventListener('resize', updateReading);
+  updateReading();
+  const links = [...document.querySelectorAll('#main-nav a')];
+  if ('IntersectionObserver' in window) {
+    const sections = links.map(link => document.querySelector(link.getAttribute('href')));
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        for (const link of links) {
+          if (link.hash === `#${entry.target.id}`) link.setAttribute('aria-current', 'location');
+          else link.removeAttribute('aria-current');
+        }
+      }
+    }, {rootMargin: '-20% 0px -55% 0px'});
+    sections.forEach(section => observer.observe(section));
+  }
 }
