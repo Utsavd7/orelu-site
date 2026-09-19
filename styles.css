@@ -226,7 +226,7 @@ html{scroll-padding-top:115px}
 .people-grid{gap:clamp(40px,6vw,88px)}
 .people-copy h2{font-size:clamp(42px,4.6vw,64px)}
 .people-copy>p{line-height:1.75}
-.founders{width:100%;max-width:520px;justify-self:end}
+.founders{width:100%;max-width:600px;justify-self:end}
 .principles{margin-top:48px;padding-top:32px;gap:48px}
 .principles p{line-height:1.75}
 .contact-grid{width:100%}
@@ -294,6 +294,11 @@ body#top .footer div{flex-wrap:wrap}
  body#top .film-cover-play .icon{width:28px;height:28px;padding:6px}
  body#top .film-chapters{gap:4px 18px}
  body#top .founders{gap:16px}
+}
+
+@media(min-width:801px){
+ body#top .founder h3{font-size:20px}
+ body#top .founder p{font-size:15px}
 }
 
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.product-preview,.founder:hover .avatar img{transform:none!important}}
