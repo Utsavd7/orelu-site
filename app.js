@@ -147,6 +147,7 @@ for (const list of document.querySelectorAll('[role="tablist"]')) {
 for (const button of document.querySelectorAll('[data-organise]')) {
   button.hidden = false;
   const demo = button.closest('.task-demo');
+  demo.classList.add('is-interactive');
   const request = demo.querySelector('.raw-request');
   const details = demo.querySelector('.organised-details');
   const values = [...details.querySelectorAll('dd')];
@@ -355,16 +356,20 @@ if (readingProgress) {
   updateReading();
   const links = [...document.querySelectorAll('#main-nav a')];
   if ('IntersectionObserver' in window) {
-    const sections = [...links.map(link => document.querySelector(link.getAttribute('href'))), document.querySelector('#thinking')];
+    const sections = [...document.querySelectorAll('main > section')];
+    const visibleSections = new Set();
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        for (const link of links) {
-          if (link.hash === `#${entry.target.id === 'thinking' ? 'approach' : entry.target.id}`) link.setAttribute('aria-current', 'location');
-          else link.removeAttribute('aria-current');
-        }
+        if (entry.isIntersecting) visibleSections.add(entry.target);
+        else visibleSections.delete(entry.target);
       }
-    }, {rootMargin: '-20% 0px -55% 0px'});
+      const section = sections.find(section => visibleSections.has(section));
+      const activeId = section?.id === 'thinking' ? 'approach' : section?.id;
+      for (const link of links) {
+        if (activeId && link.hash === `#${activeId}`) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      }
+    }, {rootMargin: '-20% 0px -79% 0px'});
     sections.forEach(section => observer.observe(section));
   }
 }
